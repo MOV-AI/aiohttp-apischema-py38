@@ -1,11 +1,14 @@
 import functools
 import inspect
 import sys
-from collections.abc import Awaitable, Callable, Mapping
+from typing import Awaitable, Callable, Mapping, Type, Any
 from http import HTTPStatus
 from pathlib import Path
-from types import UnionType
-from typing import Any, Literal, TypedDict, TypeGuard, TypeVar, cast, get_args, get_origin
+try:
+    from types import UnionType
+except ImportError:
+    from typing import Union as UnionType
+from typing import Any, Literal, TypedDict, TypeVar, cast, get_args, get_origin, Union, Optional, Dict, List, Tuple
 
 from aiohttp import web
 from aiohttp.hdrs import METH_ALL
@@ -25,8 +28,10 @@ _T = TypeVar("_T")
 _Resp = TypeVar("_Resp", bound=APIResponse[Any, Any])
 _View = TypeVar("_View", bound=web.View)
 APIHandler = (
-    Callable[[web.Request], Awaitable[_Resp]]
-    | Callable[[web.Request, Any], Awaitable[_Resp]]
+    Union[
+        Callable[[web.Request], Awaitable[_Resp]],
+        Callable[[web.Request, Any], Awaitable[_Resp]]
+    ]
 )
 OpenAPIMethod = Literal["get", "put", "post", "delete", "options", "head", "patch", "trace"]
 
@@ -43,7 +48,7 @@ class _LicenseURL(TypedDict):
     name: str
     url: str
 
-License = _LicenseID | _LicenseURL
+License = Union[_LicenseID, _LicenseURL]
 
 class Info(TypedDict, total=False):
     title: Required[str]
@@ -55,14 +60,14 @@ class Info(TypedDict, total=False):
     license: License
 
 class _EndpointData(TypedDict, total=False):
-    body: TypeAdapter[object]
+    body: TypeAdapter
     desc: str
-    resps: dict[int, TypeAdapter[Any]]
+    resps: Dict[int, TypeAdapter]
     summary: str
 
 class _Endpoint(TypedDict, total=False):
     desc: str
-    meths: Required[dict[str | None, _EndpointData]]
+    meths: Required[Dict[Optional[str], _EndpointData]]
     summary: str
 
 class _Components(TypedDict, total=False):
@@ -72,17 +77,17 @@ class _MediaTypeObject(TypedDict, total=False):
     schema: object
 
 class _RequestBodyObject(TypedDict, total=False):
-    content: Required[dict[str, _MediaTypeObject]]
+    content: Required[Dict[str, _MediaTypeObject]]
 
 class _ResponseObject(TypedDict, total=False):
-    content: dict[str, _MediaTypeObject]
+    content: Dict[str, _MediaTypeObject]
     description: Required[str]
 
 class _OperationObject(TypedDict, total=False):
     description: str
     operationId: str
     requestBody: _RequestBodyObject
-    responses: dict[str, _ResponseObject]
+    responses: Dict[str, _ResponseObject]
     summary: str
 
 class _PathObject(TypedDict, total=False):
@@ -123,7 +128,7 @@ INDEX_HTML = """<!DOCTYPE html>
 </html>"""
 SWAGGER_PATH = Path(__file__).parent / "swagger-ui"
 
-def is_openapi_method(method: str) -> TypeGuard[OpenAPIMethod]:
+def is_openapi_method(method: str):
     return method in OPENAPI_METHODS
 
 def create_view_wrapper(handler: Callable[[_View, _T], Awaitable[_Resp]], ta: TypeAdapter[_T]) -> Callable[[_View], Awaitable[_Resp]]:
@@ -137,8 +142,8 @@ def create_view_wrapper(handler: Callable[[_View, _T], Awaitable[_Resp]], ta: Ty
     return wrapper
 
 class SchemaGenerator:
-    def __init__(self, info: Info | None = None):
-        self._endpoints: dict[web.View | Handler, _Endpoint] = {}
+    def __init__(self, info: Optional[Info] = None):
+        self._endpoints: Dict[Union[web.View, Handler], _Endpoint] = {}
         if info is None:
             info = {"title": "API", "version": "1.0"}
         self._openapi: _OpenApi = {"openapi": "3.1.0", "info": info}
@@ -155,7 +160,7 @@ class SchemaGenerator:
             if desc:
                 ep_data["desc"] = desc
 
-        sig = inspect.signature(handler, eval_str=True)
+        sig = inspect.signature(handler) #, eval_str=True)
         params = iter(sig.parameters.values())
         body = next(params)
         try:
@@ -184,7 +189,7 @@ class SchemaGenerator:
 
         return ep_data
 
-    def api_view(self) -> Callable[[type[_View]], type[_View]]:
+    def api_view(self): # -> Callable[[type[_View]], type[_View]]:
         def decorator(view: type[_View]) -> type[_View]:
             self._endpoints[view] = {"meths": {}}
 
@@ -236,8 +241,8 @@ class SchemaGenerator:
 
     async def _on_startup(self, app: web.Application) -> None:
         #assert app.router.frozen
-        models: list[tuple[tuple[str, OpenAPIMethod, int | Literal["requestBody"]], Literal["serialization", "validation"], TypeAdapter[object]]] = []
-        paths: dict[str, _PathObject] = {}
+        models: List[Tuple[Tuple[str, OpenAPIMethod, Union[int, Literal["requestBody"]]], Literal["serialization", "validation"], TypeAdapter[object]]] = []
+        paths: Dict[str, _PathObject] = {}
         for route in app.router.routes():
             ep_data = self._endpoints.get(route.handler)
             if not ep_data:
@@ -272,7 +277,7 @@ class SchemaGenerator:
                 path_data[method] = operation
 
                 body = endpoints.get("body")
-                key: tuple[str, OpenAPIMethod, int | Literal["requestBody"]]
+                key: Tuple[str, OpenAPIMethod, Union[int, Literal["requestBody"]]]
                 if body:
                     key = (path, method, "requestBody")
                     models.append((key, "validation", body))
@@ -293,7 +298,7 @@ class SchemaGenerator:
                 assert isinstance(code_or_key, int)
                 assert mode == "serialization"
                 responses = paths[path][method].setdefault("responses", {})
-                content: dict[str, _MediaTypeObject] = {"application/json": {"schema": schema}}
+                content: Dict[str, _MediaTypeObject] = {"application/json": {"schema": schema}}
                 reason = HTTPStatus(code_or_key).phrase
                 responses[str(code_or_key)] = {"description": reason, "content": content}
         if paths:
