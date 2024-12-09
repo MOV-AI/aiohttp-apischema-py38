@@ -89,6 +89,7 @@ class _OperationObject(TypedDict, total=False):
     requestBody: _RequestBodyObject
     responses: Dict[str, _ResponseObject]
     summary: str
+    tags: List[str]
 
 class _PathObject(TypedDict, total=False):
     delete: _OperationObject
@@ -148,7 +149,7 @@ class SchemaGenerator:
             info = {"title": "API", "version": "1.0"}
         self._openapi: _OpenApi = {"openapi": "3.1.0", "info": info}
 
-    def _save_handler(self, handler: APIHandler[APIResponse[object, int]]) -> _EndpointData:
+    def _save_handler(self, handler: APIHandler[APIResponse[object, int]], tags=[]) -> _EndpointData:
         ep_data: _EndpointData = {}
         docs = inspect.getdoc(handler)
         if docs:
@@ -159,6 +160,8 @@ class SchemaGenerator:
                 ep_data["summary"] = summary
             if desc:
                 ep_data["desc"] = desc
+            if tags:
+                ep_data["tags"] = tags
 
         sig = inspect.signature(handler) #, eval_str=True)
         params = iter(sig.parameters.values())
@@ -215,9 +218,9 @@ class SchemaGenerator:
 
         return decorator
 
-    def api(self) -> Callable[[APIHandler[_Resp]], Callable[[web.Request], Awaitable[_Resp]]]:
+    def api(self, tags=[]) -> Callable[[APIHandler[_Resp]], Callable[[web.Request], Awaitable[_Resp]]]:
         def decorator(handler: APIHandler[_Resp]) -> Callable[[web.Request], Awaitable[_Resp]]:
-            ep_data = self._save_handler(handler)
+            ep_data = self._save_handler(handler, tags=tags)
             ta = ep_data.get("body")
             if ta:
                 @functools.wraps(handler)
@@ -270,10 +273,15 @@ class SchemaGenerator:
                 operation: _OperationObject = {"operationId": route.handler.__name__}
                 summary = endpoints.get("summary")
                 desc = endpoints.get("desc")
+                tags = endpoints.get("tags")
+
                 if summary:
                     operation["summary"] = summary
                 if desc:
                     operation["description"] = desc
+                if tags:
+                    operation["tags"] = tags
+
                 path_data[method] = operation
 
                 body = endpoints.get("body")
