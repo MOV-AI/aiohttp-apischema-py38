@@ -240,7 +240,7 @@ class SchemaGenerator:
                 return wrapper
 
             handler = cast(Callable[[web.Request], Awaitable[_Resp]], handler)
-            self._endpoints[handler] = {"meths": {None: ep_data}}
+            self._endpoints[handler.__code__] = {"meths": {None: ep_data}}
             return handler
 
         return decorator
@@ -250,7 +250,11 @@ class SchemaGenerator:
         models: List[Tuple[Tuple[str, OpenAPIMethod, Union[int, Literal["requestBody"]]], Literal["serialization", "validation"], TypeAdapter[object]]] = []
         paths: Dict[str, _PathObject] = {}
         for route in app.router.routes():
-            ep_data = self._endpoints.get(route.handler)
+            try:
+                ep_data = self._endpoints.get(route.handler.__code__)
+            except AttributeError:
+                continue
+
             if not ep_data:
                 continue
 
