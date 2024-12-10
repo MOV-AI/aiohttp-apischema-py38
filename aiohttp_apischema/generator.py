@@ -188,7 +188,10 @@ class SchemaGenerator:
                 code = get_args(args[1])[0]  # Value of Literal
             except IndexError:
                 code = 200
-            ep_data["resps"][code] = TypeAdapter(args[0])
+            try:
+                ep_data["resps"][code] = TypeAdapter(args[0])
+            except IndexError:
+                pass
 
         return ep_data
 
