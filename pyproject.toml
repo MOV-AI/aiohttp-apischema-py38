@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aiohttp-apischema"
+version = "0.0.1.0"
 dependencies = ["aiohttp>=3.8", "pydantic>=2", 'typing-extensions ; python_version < "3.13"']
 description = "Generate a schema and validate user input from types"
-dynamic = ["version"]
 license = {file = "LICENSE"}
 readme = "README.rst"
 requires-python = ">=3.8"
@@ -29,5 +29,30 @@ Issues = "https://github.com/aio-libs/aiohttp-apischema/issues"
 [tool.setuptools]
 packages = ["aiohttp_apischema"]
 
-[tool.setuptools.dynamic]
-version = {attr = "aiohttp_apischema.__version__"}
+[tool.black]
+line-length = 100
+
+[tool.bumpversion]
+current_version = "0.0.1.0"
+parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)?(\\.(?P<build>\\d+))?"
+serialize = ["{major}.{minor}.{patch}.{build}"]
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+regex = true
+
+[[tool.bumpversion.files]]
+filename = "CHANGELOG.md"
+search = '# vTBD'
+serialize = ["{major}.{minor}.{patch}"]
+replace = "# v{new_version}"
+regex = true
+ignore_missing_version = true
+
+[[tool.bumpversion.files]]
+filename = "aiohttp_apischema/__init__.py"
+search = '__version__ = .*'
+replace = '__version__ = "{new_version}"'
+regex = true
