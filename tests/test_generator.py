@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Any, Literal, Tuple, Union
 
 from aiohttp import web
 from aiohttp.pytest_plugin import AiohttpClient
@@ -23,7 +23,7 @@ class NewPoll(TypedDict):
     """Details to create a new poll."""
 
     question: str
-    choices: Annotated[tuple[str, ...], Field(min_length=2)]
+    choices: Any
 
 
 POLL1: Poll = {"id": 1, "question": "What's new?", "pub_date": datetime(2015, 12, 15, 17, 17, 49).isoformat()}
@@ -63,7 +63,7 @@ async def test_response(aiohttp_client: AiohttpClient) -> None:
     schema_gen = SchemaGenerator()
 
     @schema_gen.api()
-    async def list_polls(request: web.Request) -> APIResponse[tuple[Poll, ...], Literal[200]]:
+    async def list_polls(request: web.Request) -> APIResponse[Tuple[Poll, ...], Literal[200]]:
         """Summary here.
 
         This
@@ -106,11 +106,11 @@ async def test_body(aiohttp_client: AiohttpClient) -> None:
     schema_gen = SchemaGenerator()
 
     @schema_gen.api()
-    async def add_choices(request: web.Request, messages: tuple[str, ...]) -> APIResponse[tuple[str, ...], Literal[201]] | APIResponse[None, Literal[404]]:
+    async def add_choices(request: web.Request, messages: Tuple[str, ...]) -> Union[APIResponse[Tuple[str, ...], Literal[201]], APIResponse[None, Literal[404]]]:
         poll_id = int(request.match_info["id"])
         if poll_id == 1:
             return APIResponse[None, Literal[404]](None, status=404)
-        return APIResponse[tuple[str, ...], Literal[201]](messages, status=201)
+        return APIResponse[Tuple[str, ...], Literal[201]](messages, status=201)
 
     app = web.Application()
     schema_gen.setup(app)
@@ -169,7 +169,7 @@ async def test_view(aiohttp_client: AiohttpClient) -> None:
     class PollView(web.View):
         """PollView class."""
 
-        async def get(self) -> APIResponse[Poll, Literal[200]] | APIResponse[None, Literal[404]]:
+        async def get(self) -> Union[APIResponse[Poll, Literal[200]], APIResponse[None, Literal[404]]]:
             """Fetch poll."""
 
             poll_id = int(self.request.match_info["id"])
