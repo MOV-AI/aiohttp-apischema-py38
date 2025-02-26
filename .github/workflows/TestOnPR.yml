@@ -11,7 +11,6 @@ jobs:
     uses: MOV-AI/.github/.github/workflows/py-workflow.yml@v2
     with:
       deploy: false
-      with_docs: true
     secrets:
       auto_commit_user: ${{ secrets.RAISE_BOT_COMMIT_USER }}
       auto_commit_mail: ${{ secrets.RAISE_BOT_COMMIT_MAIL }}
