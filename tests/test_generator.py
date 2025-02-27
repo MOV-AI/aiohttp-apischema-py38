@@ -252,3 +252,34 @@ async def test_view(aiohttp_client: AiohttpClient) -> None:
         assert len(result) == 1
         assert result[0]["loc"] == ["choices"]
         assert result[0]["type"] == "too_short"
+
+
+async def test_no_body_no_hints(aiohttp_client: AiohttpClient) -> None:
+    schema_gen = SchemaGenerator()
+
+    @schema_gen.api()
+    async def add_choices(request: web.Request):
+        """Some doc."""
+        poll_id = int(request.match_info["id"])
+        if poll_id == 1:
+            return web.json_response(None, status=404)
+        return web.json_response([], status=201)
+
+    app = web.Application()
+    schema_gen.setup(app)
+    app.router.add_put("/poll/{id:\\d+}/choice", add_choices)
+
+    client = await aiohttp_client(app)
+    async with client.get("/schema") as resp:
+        assert resp.ok
+        schema = await resp.json()
+
+    paths = {
+        "/poll/{id}/choice": {
+            "put": {
+                "operationId": "add_choices",
+                "summary": "Some doc."
+            }
+        }
+    }
+    assert schema["paths"] == paths
