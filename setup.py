@@ -6,6 +6,7 @@ from setuptools.command.build_py import build_py as _build_py
 
 
 class CustomBuild(_build_py):
+    """Move logic originally present in github workflow to setup.py."""
     def run(self):
         destination_path = pathlib.Path(__file__).parent.resolve()
 
