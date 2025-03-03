@@ -1,4 +1,4 @@
-# vTBD
+# v0.0.2
 * Adds our workflows
 * Uses bumpmyversion
 * Migrate to 4 digit version
