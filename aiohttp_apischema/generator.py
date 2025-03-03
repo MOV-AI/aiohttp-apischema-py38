@@ -196,7 +196,7 @@ class SchemaGenerator:
         return ep_data
 
     def api_view(self): # -> Callable[[type[_View]], type[_View]]:
-        def decorator(view: type[_View]) -> type[_View]:
+        def decorator(view: Type[_View]) -> Type[_View]:
             self._endpoints[view] = {"meths": {}}
 
             docs = inspect.getdoc(view)

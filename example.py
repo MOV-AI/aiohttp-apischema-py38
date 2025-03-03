@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Any, Literal
 
 from aiohttp import web
 from aiohttp_apischema import APIResponse, SchemaGenerator
@@ -27,7 +27,7 @@ class NewPoll(TypedDict):
     """Details to create a new poll."""
 
     question: str
-    choices: Annotated[tuple[str, ...], Field(min_length=2)]
+    choices: Any
 
 
 POLL1: Poll = {"id": 1, "question": "What's new?", "pub_date": datetime(2015, 12, 15, 17, 17, 49).isoformat()}
@@ -69,7 +69,7 @@ async def add_choice(request: web.Request, message: str) -> APIResponse[int, Lit
 class PollView(web.View):
     """Endpoints for individual polls."""
 
-    async def get(self) -> APIResponse[Poll, Literal[200]] | APIResponse[None, Literal[404]]:
+    async def get(self) -> Union[APIResponse[Poll, Literal[200]], APIResponse[None, Literal[404]]]:
         """Fetch a poll by ID."""
         poll_id = int(self.request.match_info["id"])
         poll = POLLS.get(poll_id)
