@@ -236,7 +236,7 @@ class SchemaGenerator:
                     handler = cast(Callable[[web.Request, Any], Awaitable[_Resp]], handler)
                     return await handler(request, request_body)
 
-                self._endpoints[wrapper] = {"meths": {None: ep_data}}
+                self._endpoints[wrapper.__wrapped__.__code__] = {"meths": {None: ep_data}}
                 return wrapper
 
             handler = cast(Callable[[web.Request], Awaitable[_Resp]], handler)
@@ -250,8 +250,11 @@ class SchemaGenerator:
         models: List[Tuple[Tuple[str, OpenAPIMethod, Union[int, Literal["requestBody"]]], Literal["serialization", "validation"], TypeAdapter[object]]] = []
         paths: Dict[str, _PathObject] = {}
         for route in app.router.routes():
+            handler = route.handler
+            if hasattr(handler, "__wrapped__"):
+                handler = handler.__wrapped__
             try:
-                ep_data = self._endpoints.get(route.handler.__code__)
+                ep_data = self._endpoints.get(handler.__code__)
             except AttributeError:
                 continue
 
