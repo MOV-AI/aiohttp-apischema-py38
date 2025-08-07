@@ -104,7 +104,6 @@ async def test_response(aiohttp_client: AiohttpClient) -> None:
     assert schema["paths"] == paths
 
 
-@pytest.mark.xfail(reason="Regression introduced in 7e96c50f6")
 async def test_body(aiohttp_client: AiohttpClient) -> None:
     schema_gen = SchemaGenerator()
 
